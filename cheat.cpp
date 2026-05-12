@@ -76,7 +76,6 @@ uintptr_t Cheat::GetModuleBase(pid_t pid, const std::string& moduleName)
 int main() {
     Cheat hack;
     
-    // 1. Get PID
     pid_t pid = hack.GetProccesname("linux_64_client");
     if (pid == -1) {
         std::cerr << "[-] Could not find game process. Is it running?" << std::endl;
