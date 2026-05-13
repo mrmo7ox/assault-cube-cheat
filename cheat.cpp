@@ -90,7 +90,7 @@ int main() {
     }
     std::cout << "[+] Game Found! PID: " << pid << std::endl;
     std::cout << "[+] Module Base: 0x" << std::hex << base << std::dec << std::endl;
-
+    // exit(1);
 
     while (true) {
         int playerCount = hack.Read<int>(base + OFFSET_PLAYER_COUNT);
@@ -98,11 +98,16 @@ int main() {
         if (playerCount > 0 && playerCount < 32) { 
             std::cout << "\n--- Players in game: " << playerCount << " ---" << std::endl;
             uintptr_t entityList = hack.Read<uintptr_t>(base + OFFSET_ENTITY_LIST);
+
             for (int i = 1; i < playerCount; i++) {
                 uintptr_t enemyPtr = hack.Read<uintptr_t>(entityList + (i * 8));
                 if (enemyPtr != 0) { 
                     int health = hack.Read<int>(enemyPtr + OFFSET_HEALTH);
+                    hack.Write(enemyPtr + OFFSET_HEALTH, 1);
                     Vector3 pos = hack.Read<Vector3>(enemyPtr + OFFSET_X);
+                    Vector3 my_pos = hack.Read<Vector3>(base + 0x261B0FD0 + OFFSET_X);
+                    hack.Write(enemyPtr + OFFSET_X, my_pos);
+
                     std::cout << "[Enemy " << i << "] Health: " << health 
                               << " | Pos: " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
                 }
@@ -111,7 +116,7 @@ int main() {
             std::cout << "Waiting for game to start..." << std::endl;
         }
 
-        usleep(1000000);
+        usleep(10000000);
     }
 
     return 0;

@@ -20,8 +20,8 @@
 #define OFFSET_X      0x2C
 #define OFFSET_Y      0x30
 #define OFFSET_Z      0x34
-#define OFFSET_YAW    0x38
 #define OFFSET_HEALTH 0x100
+#define OFFSET_YAW    0x38
 #define OFFSET_PITCH  0x3C
 
 #define OFFSET_PLAYER_COUNT 0x1a352c 
