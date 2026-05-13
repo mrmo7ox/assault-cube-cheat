@@ -2,9 +2,9 @@ NAME    = cheat
 CC      = c++
 FLAGS   = -Wall -Wextra -Werror -std=c++11
 
-SRC     = cheat.cpp
+SRC     = cheat.cpp main.cpp
 OBJ     = $(SRC:.cpp=.o)
-HDR     = player.hpp vector3.hpp cheat.hpp
+HDR     = player.hpp vector3.hpp cheat.hpp mem.hpp vec2.hpp
 
 all: $(NAME)
 

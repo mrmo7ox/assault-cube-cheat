@@ -1,6 +1,6 @@
 #include "cheat.hpp"
 
-Cheat::Cheat() {
+Cheat::Cheat(): pid(0), entity_address(0), BaseAdd(0) {
     std::cout << "Cheat initialize" << std::endl;
 }
 
@@ -10,14 +10,13 @@ void Cheat::run()
 {
 }
 
-pid_t Cheat::GetProccesname(const std::string & name)
+void Cheat::GetProccesname(const std::string & name)
 {
     pid_t pid = -1;
     DIR *dir = opendir("/proc");
 
     if (!dir)
-        return pid;
-
+        throw std::runtime_error("dir is not opened line 19");
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr)
     {
@@ -40,8 +39,9 @@ pid_t Cheat::GetProccesname(const std::string & name)
         }
     }
     closedir(dir);
+    if(pid == -1)
+        throw std::runtime_error("Could not find game process. Is it running? line 43");
     this->setpid(pid);
-    return pid;
 }
 
 void Cheat::HealthHack(bool v)
@@ -52,7 +52,7 @@ void Cheat::HealthHack(bool v)
     }
 };
 
-uintptr_t Cheat::GetModuleBase(pid_t pid, const std::string& moduleName)
+void Cheat::GetModuleBase(pid_t pid, const std::string& moduleName)
 {
     std::string path = "/proc/" + std::to_string(pid) + "/maps";
     std::ifstream maps(path);
@@ -63,61 +63,34 @@ uintptr_t Cheat::GetModuleBase(pid_t pid, const std::string& moduleName)
         if(line.find(moduleName) != std::string::npos)
         {
             std::string addrHex =line.substr(0, line.find("-"));
-            setBaseAdd(std::stoul(addrHex, nullptr, 16));
-            return std::stoul(addrHex, nullptr, 16);
+            this->setBaseAdd(std::stoul(addrHex, nullptr, 16));
+            break;
         }
     }
-    return 0;
+    if(this->BaseAdd == 0)
+        throw std::runtime_error("cant find the base address");
 }
 
-#include "cheat.hpp"
-#include <unistd.h>
 
-int main() {
-    Cheat hack;
-    
-    pid_t pid = hack.GetProccesname("linux_64_client");
-    if (pid == -1) {
-        std::cerr << "[-] Could not find game process. Is it running?" << std::endl;
-        return 1;
-    }
-    hack.setpid(pid);
 
-    uintptr_t base = hack.GetModuleBase(pid, "linux_64_client");
-    if (base == 0) {
-        std::cerr << "[-] Could not find module base. Check permissions!" << std::endl;
-        return 1;
-    }
-    std::cout << "[+] Game Found! PID: " << pid << std::endl;
-    std::cout << "[+] Module Base: 0x" << std::hex << base << std::dec << std::endl;
-    // exit(1);
+void Cheat::setpid(pid_t _pid)
+{
+    std::cout << "THE PID IS SET :" << _pid << std::endl;
+    this->pid = _pid;
+}
 
-    while (true) {
-        int playerCount = hack.Read<int>(base + OFFSET_PLAYER_COUNT);
-        
-        if (playerCount > 0 && playerCount < 32) { 
-            std::cout << "\n--- Players in game: " << playerCount << " ---" << std::endl;
-            uintptr_t entityList = hack.Read<uintptr_t>(base + OFFSET_ENTITY_LIST);
+pid_t Cheat::getpid() const
+{ 
+    return this->pid;
+}
 
-            for (int i = 1; i < playerCount; i++) {
-                uintptr_t enemyPtr = hack.Read<uintptr_t>(entityList + (i * 8));
-                if (enemyPtr != 0) { 
-                    int health = hack.Read<int>(enemyPtr + OFFSET_HEALTH);
-                    hack.Write(enemyPtr + OFFSET_HEALTH, 1);
-                    Vector3 pos = hack.Read<Vector3>(enemyPtr + OFFSET_X);
-                    Vector3 my_pos = hack.Read<Vector3>(base + 0x261B0FD0 + OFFSET_X);
-                    hack.Write(enemyPtr + OFFSET_X, my_pos);
+void Cheat::setBaseAdd(uintptr_t _BaseAdd) 
+{ 
+    std::cout << "THE BASE ADDRESS IS SET :" << _BaseAdd << std::endl;
+    this->BaseAdd = _BaseAdd;
+ }
 
-                    std::cout << "[Enemy " << i << "] Health: " << health 
-                              << " | Pos: " << pos.x << ", " << pos.y << ", " << pos.z << std::endl;
-                }
-            }
-        } else {
-            std::cout << "Waiting for game to start..." << std::endl;
-        }
-
-        usleep(10000000);
-    }
-
-    return 0;
+uintptr_t Cheat::getBaseAdd() const
+{ 
+    return this->BaseAdd; 
 }
