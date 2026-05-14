@@ -1,7 +1,7 @@
 NAME    = cheat
 CC      = c++
 FLAGS   = -Wall -Wextra -Werror -std=c++11
-
+LDFLAGS = -lX11
 SRC     = cheat.cpp main.cpp
 OBJ     = $(SRC:.cpp=.o)
 HDR     = player.hpp vector3.hpp cheat.hpp mem.hpp vec2.hpp
@@ -9,7 +9,7 @@ HDR     = player.hpp vector3.hpp cheat.hpp mem.hpp vec2.hpp
 all: $(NAME)
 
 $(NAME): $(OBJ)
-	$(CC) $(FLAGS) $(OBJ) -o $(NAME)
+	$(CC) $(FLAGS) $(OBJ) -o $(NAME) $(LDFLAGS)
 
 %.o: %.cpp $(HDR)
 	$(CC) $(FLAGS) -c $< -o $@

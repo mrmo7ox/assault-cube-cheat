@@ -21,7 +21,12 @@
 #define OFFSET_PLAYER_COUNT 0x1a352c 
 #define OFFSET_ENTITY_LIST  0x1a3520
 #define ME                  0x1A3518
-#define MARTIX              0x1B5020
+#define OFFSET_VIEW_MATRIX  0x1B5020
+
+
+struct ViewMatrix {
+    float matrix[16];
+};
 
 
 template <typename T>

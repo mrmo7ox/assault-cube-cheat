@@ -94,3 +94,88 @@ uintptr_t Cheat::getBaseAdd() const
 { 
     return this->BaseAdd; 
 }
+
+bool Cheat::WorldToScreen(const Vector3& pos, Vector2& screen, float matrix[16]) 
+{
+    float clipX = pos.x * matrix[0] + pos.y * matrix[4] + pos.z * matrix[8]  + matrix[12];
+    float clipY = pos.x * matrix[1] + pos.y * matrix[5] + pos.z * matrix[9]  + matrix[13];
+    float clipZ = pos.x * matrix[2] + pos.y * matrix[6] + pos.z * matrix[10] + matrix[14];
+    float clipW = pos.x * matrix[3] + pos.y * matrix[7] + pos.z * matrix[11] + matrix[15];
+
+    if (clipW < 0.1f) {
+        return false; 
+    }
+
+    float ndcX = clipX / clipW;
+    float ndcY = clipY / clipW;
+
+    screen.x = (this->width / 2.0f * ndcX) + (ndcX + this->width / 2.0f);
+    screen.y = -(this->height / 2.0f * ndcY) + (ndcY + this->height / 2.0f);
+    
+    return true; 
+}
+
+Window Cheat::FindWindowByPID(Display* dpy, Window top, unsigned long target_pid)
+{
+    Atom prop = XInternAtom(dpy, "_NET_WM_PID", True);
+    Atom type;
+    int format;
+    unsigned long nItems;
+    unsigned long bytesAfter;
+    unsigned char* data = 0;
+
+    if (XGetWindowProperty(dpy, top, prop, 0, 1, False, AnyPropertyType, &type, &format, &nItems, &bytesAfter, &data) == Success)
+    {
+        if (data != nullptr)
+        {
+            unsigned long window_pid = *((unsigned long*)data);
+            XFree(data);
+            if(window_pid == target_pid) {
+                return top;
+            }
+        }
+    }
+
+    Window  root;
+    Window  parent;
+    Window  *children;
+    unsigned int num;
+    
+    if(XQueryTree(dpy, top, &root, &parent, &children, &num))
+    {
+        for(unsigned int i = 0; i < num; i++)
+        {
+            Window w = FindWindowByPID(dpy, children[i], target_pid);
+            if(w)
+            {
+                XFree(children);
+                return w;
+            }
+        }
+        if(children)
+            XFree(children);
+    }
+    
+    return 0;
+}
+
+void Cheat::GetWindowSize(int pid)
+{
+    Display* dpy = XOpenDisplay(NULL);
+    if(!dpy)
+        throw std::runtime_error("cant create a dpy line 113");
+    this->game_window = FindWindowByPID(dpy, DefaultRootWindow(dpy), pid);
+    if(!this->game_window)
+    {
+        XCloseDisplay(dpy);
+        throw std::runtime_error("cant get game window line 119");
+    }
+    
+    XWindowAttributes attr;
+    XGetWindowAttributes(dpy, this->game_window, &attr);
+    this->width = attr.width;
+    this->height = attr.height;
+    XCloseDisplay(dpy);
+}
+
+
