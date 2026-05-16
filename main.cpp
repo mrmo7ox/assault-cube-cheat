@@ -8,7 +8,7 @@
 #include <string>
 #include <cstdlib>
 
-int main() 
+int main( int ac, char **dc) 
 {
     try
     {
@@ -47,21 +47,30 @@ int main()
             try
             {
                 ImGui::GetWindowDrawList()->AddRect(
-                    ImVec2(100, 100), // Top Left X, Y
-                    ImVec2(300, 300), // Bottom Right X, Y
-                    IM_COL32(0, 255, 0, 255), // Color: GREEN
-                    0.0f,  // Rounding
-                    0,     // Flags
-                    2.0f   // Line thickness
+                    ImVec2(100, 100),
+                    ImVec2(300, 300),
+                    IM_COL32(0, 255, 0, 255),
+                    0.0f,
+                    0,
+                    2.0f
                 );
                 uintptr_t localPlayerPtr = ::Read<uintptr_t>(hack.getBaseAdd() + ME, hack.getpid());
                 
                 if (localPlayerPtr) 
                 {
                     Player me(localPlayerPtr, hack.getpid(), "ME");
-                    
                     uintptr_t entityList = ::Read<uintptr_t>(hack.getBaseAdd() + OFFSET_ENTITY_LIST, hack.getpid());
-                    ViewMatrix vm = ::Read<ViewMatrix>(hack.getBaseAdd() + OFFSET_VIEW_MATRIX, hack.getpid());
+                    ViewMatrix vm = ::Read<ViewMatrix>(hack.getBaseAdd() + OFFSET_ENTITY_LIST , hack.getpid());
+                    if(ac == 2)
+                    {
+                        int value = std::stoi(dc[1], nullptr, 16);
+                        vm = ::Read<ViewMatrix>(hack.getBaseAdd() +  value, hack.getpid());
+                        std::cout << value << std::endl;
+                        // exit(1);
+                    }
+                    std::cout << "Matrix: ";
+                    for(int i = 0; i < 16; i++) std::cout << vm.matrix[i] << " ";
+                    std::cout << std::endl;
                     int player_count = ::Read<int>(hack.getBaseAdd() + OFFSET_PLAYER_COUNT, hack.getpid());
                     std::cout << "====================================" << std::endl;
                     std::cout << me << std::endl;
@@ -78,14 +87,14 @@ int main()
                                 std::cout << enemy << std::endl;
                                 Vector3 feet = enemy.get_cord();
                                 Vector3 head = feet;
-                                head.z += 65.0f;
+                                head.z += 5.0f;
                                 Vector2 screenFeet, screenHead;
                                 
                                 if(hack.WorldToScreen(feet, screenFeet, vm.matrix) &&
                                    hack.WorldToScreen(head, screenHead, vm.matrix))
                                 {
                                     float boxHeight = screenFeet.y - screenHead.y;
-                                    float boxWidth = boxHeight / 2.0f;
+                                    float boxWidth = boxHeight * 0.4f;
                                     float topLeftX = screenHead.x - (boxWidth / 2.0f);
                                     float topLeftY = screenHead.y;
                                     std::cout << "Box -> X: " << topLeftX << " | Y: " << topLeftY << " | BottomY: " << (topLeftY + boxHeight) << std::endl;
