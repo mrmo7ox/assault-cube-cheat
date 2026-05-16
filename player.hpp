@@ -16,14 +16,12 @@ class Player {
         pid_t pid;
     public:
         Player() : cord(0.0f, 0.0f, 0.0f), health(100), name("Default") {}
-        Player(uintptr_t playerAdd, pid_t _pid)
+        Player(uintptr_t entity_address, pid_t _pid, std::string _name)
         {
             this->pid = _pid;
-            this->address = ::Read<uintptr_t>(playerAdd, this->pid);
-            this->cord = ::Read<Vector3>(this->address + OFFSET_X, this->pid);
-            this->health = ::Read<int>(this->address + OFFSET_HEALTH, this->pid);
-            this->mouse = ::Read<Vector2>(this->address + OFFSET_YAW, this->pid);
-            this->name = "ME";
+            this->address = entity_address;
+            this->name = _name;
+            this->update();
         }
         ~Player() {}
 
@@ -41,7 +39,7 @@ class Player {
         {
             this->cord = ::Read<Vector3>(this->address + OFFSET_X, this->pid);
             this->health = ::Read<int>(this->address + OFFSET_HEALTH, this->pid);
-            this->name = "ME";
+            this->mouse = ::Read<Vector2>(this->address + OFFSET_YAW, this->pid);
         }
 };
 
