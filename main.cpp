@@ -1,83 +1,132 @@
 #include "cheat.hpp"
 #include "player.hpp"
 #include "mem.hpp"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include <GLFW/glfw3.h>
+#include <string>
+#include <cstdlib>
 
 int main() 
 {
     try
     {
+        setenv("XDG_RUNTIME_DIR", "", 1);
+        setenv("DISPLAY", ":0", 1);
+        char* XDG_RUNTIME_DIR = std::getenv("XDG_RUNTIME_DIR");
+        char* DISPLAY = std::getenv("DISPLAY");
+        std::cout << XDG_RUNTIME_DIR << " " << DISPLAY << std::endl;
         Cheat hack;
         hack.GetProccesname("linux_64_client");
         hack.GetModuleBase(hack.getpid(), "linux_64_client");
-        
-        while(true)
+        hack.GetWindowBounds(hack.getpid());
+        hack.start_window();
+        ImGuiIO& io = ImGui::GetIO();
+        GLFWwindow* window = hack.get_window();
+        while(!glfwWindowShouldClose(window))
         {
+            glfwPollEvents();
+            if (!io.WantCaptureMouse) {
+                glfwSetWindowAttrib(window, GLFW_MOUSE_PASSTHROUGH, GLFW_TRUE);
+            } else {
+                glfwSetWindowAttrib(window, GLFW_MOUSE_PASSTHROUGH, GLFW_FALSE);
+            }
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowSize(ImVec2(hack.get_width(), hack.get_height()));
+            ImGui::Begin("Overlay", nullptr, 
+                ImGuiWindowFlags_NoBackground | 
+                ImGuiWindowFlags_NoTitleBar | 
+                ImGuiWindowFlags_NoResize | 
+                ImGuiWindowFlags_NoMove | 
+                ImGuiWindowFlags_NoSavedSettings | 
+                ImGuiWindowFlags_NoInputs);
             try
             {
-                hack.GetWindowSize(hack.getpid());
-                
-                // 1. Read the Local Player pointer FIRST
+                ImGui::GetWindowDrawList()->AddRect(
+                    ImVec2(100, 100), // Top Left X, Y
+                    ImVec2(300, 300), // Bottom Right X, Y
+                    IM_COL32(0, 255, 0, 255), // Color: GREEN
+                    0.0f,  // Rounding
+                    0,     // Flags
+                    2.0f   // Line thickness
+                );
                 uintptr_t localPlayerPtr = ::Read<uintptr_t>(hack.getBaseAdd() + ME, hack.getpid());
-                if (!localPlayerPtr) continue;
-
-                // 2. Pass it safely to the new constructor
-                Player me(localPlayerPtr, hack.getpid(), "ME");
                 
-                uintptr_t entityList = ::Read<uintptr_t>(hack.getBaseAdd() + OFFSET_ENTITY_LIST, hack.getpid());
-                ViewMatrix vm = ::Read<ViewMatrix>(hack.getBaseAdd() + OFFSET_VIEW_MATRIX, hack.getpid());
-                int player_count = ::Read<int>(hack.getBaseAdd() + OFFSET_PLAYER_COUNT, hack.getpid());
-                
-                std::cout << "=========================="<< std::endl;
-                std::cout << me << std::endl;
-                
-                for(int i = 1; i < player_count; i++)
+                if (localPlayerPtr) 
                 {
-                    try 
+                    Player me(localPlayerPtr, hack.getpid(), "ME");
+                    
+                    uintptr_t entityList = ::Read<uintptr_t>(hack.getBaseAdd() + OFFSET_ENTITY_LIST, hack.getpid());
+                    ViewMatrix vm = ::Read<ViewMatrix>(hack.getBaseAdd() + OFFSET_VIEW_MATRIX, hack.getpid());
+                    int player_count = ::Read<int>(hack.getBaseAdd() + OFFSET_PLAYER_COUNT, hack.getpid());
+                    std::cout << "====================================" << std::endl;
+                    std::cout << me << std::endl;
+                    for(int i = 1; i < player_count; i++)
                     {
-                        uintptr_t enemyPtr = ::Read<uintptr_t>(entityList + (i * 8), hack.getpid());
-                        if(!enemyPtr) continue;
-                        
-                        // 3. Name the enemies so you can tell them apart!
-                        Player enemy(enemyPtr, hack.getpid(), "Enemy " + std::to_string(i));
-                        
-                        std::cout << enemy << std::endl;
-
-                        if(enemy.get_health() > 0 && enemy.get_health() <= 100)
+                        try 
                         {
-                            Vector3 feet = enemy.get_cord();
-                            Vector3 head = feet;
-                            head.z += 5.0f;
-                            Vector2 screenFeet, screenHead;
-                            
-                            if(hack.WorldToScreen(feet, screenFeet, vm.matrix) &&
-                               hack.WorldToScreen(head, screenHead, vm.matrix))
+                            uintptr_t enemyPtr = ::Read<uintptr_t>(entityList + (i * 8), hack.getpid());
+                            if(!enemyPtr) continue;
+                            Player enemy(enemyPtr, hack.getpid(), "Enemy " + std::to_string(i));
+
+                            if(enemy.get_health() > 0 && enemy.get_health() <= 100)
                             {
-                                float boxHeight = screenFeet.y - screenHead.y;
-                                float boxWidth = boxHeight / 2.0f;
-                                float topLeftX = screenHead.x - (boxWidth / 2.0f);
-                                float topLeftY = screenHead.y;
+                                std::cout << enemy << std::endl;
+                                Vector3 feet = enemy.get_cord();
+                                Vector3 head = feet;
+                                head.z += 65.0f;
+                                Vector2 screenFeet, screenHead;
                                 
-                                std::cout << "[SUCCESS] DRAW BOX AT X:" << (int)topLeftX 
-                                          << " Y:" << (int)topLeftY << std::endl;
+                                if(hack.WorldToScreen(feet, screenFeet, vm.matrix) &&
+                                   hack.WorldToScreen(head, screenHead, vm.matrix))
+                                {
+                                    float boxHeight = screenFeet.y - screenHead.y;
+                                    float boxWidth = boxHeight / 2.0f;
+                                    float topLeftX = screenHead.x - (boxWidth / 2.0f);
+                                    float topLeftY = screenHead.y;
+                                    std::cout << "Box -> X: " << topLeftX << " | Y: " << topLeftY << " | BottomY: " << (topLeftY + boxHeight) << std::endl;
+                                    ImGui::GetWindowDrawList()->AddRect(
+                                        ImVec2(topLeftX, topLeftY), 
+                                        ImVec2(topLeftX + boxWidth, topLeftY + boxHeight), 
+                                        IM_COL32(255, 0, 0, 255),
+                                        0.0f,
+                                        0,
+                                        1.5f
+                                    );
+                                }
                             }
                         }
-                    }
-                    catch (const std::exception &e)
-                    {
-                        continue;
+                        catch (...) {
+                            continue;
+                        }
                     }
                 }
             }
-            catch (const std::exception &e)
-            {
-                std::cerr << e.what() << std::endl;
+            catch (...) {
             }
-            usleep(100000);
+
+            ImGui::End();
+
+            ImGui::Render();
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            glfwSwapBuffers(window);
         }
     }
     catch(const std::exception& e)
     {
-        std::cerr << e.what() << '\n';
+        std::cerr << "Fatal Error: " << e.what() << '\n';
     }
+    
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+    glfwTerminate();
+
     return 0;
 }
