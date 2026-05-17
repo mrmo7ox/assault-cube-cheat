@@ -46,21 +46,20 @@ int main( int ac, char **dc)
                 ImGuiWindowFlags_NoInputs);
             try
             {
-                ImGui::GetWindowDrawList()->AddRect(
-                    ImVec2(100, 100),
-                    ImVec2(300, 300),
-                    IM_COL32(0, 255, 0, 255),
-                    0.0f,
-                    0,
-                    2.0f
+                ImGui::GetWindowDrawList()->AddRectFilled(
+                    ImVec2(40, 180),
+                    ImVec2(220, 245),
+                    IM_COL32(0, 255, 0, 255)
                 );
-                uintptr_t localPlayerPtr = ::Read<uintptr_t>(hack.getBaseAdd() + ME, hack.getpid());
-                
+                ImGui::SetCursorPos(ImVec2(50.0f, 200.0f));
+                ImGui::SetWindowFontScale(2.0f);
+                ImGui::TextColored(ImVec4(0.0f, 0.0f, 0.0f, 1.0f), "Cheat is ON");
+                uintptr_t localPlayerPtr = ::Read<uintptr_t>(hack.getBaseAdd() + ME, hack.getpid());  
                 if (localPlayerPtr) 
                 {
                     Player me(localPlayerPtr, hack.getpid(), "ME");
                     uintptr_t entityList = ::Read<uintptr_t>(hack.getBaseAdd() + OFFSET_ENTITY_LIST, hack.getpid());
-                    ViewMatrix vm = ::Read<ViewMatrix>(hack.getBaseAdd() + OFFSET_ENTITY_LIST , hack.getpid());
+                    ViewMatrix vm = ::Read<ViewMatrix>(hack.getBaseAdd() + OFFSET_VIEW_MATRIX , hack.getpid());
                     if(ac == 2)
                     {
                         int value = std::stoi(dc[1], nullptr, 16);
