@@ -7,9 +7,27 @@
 #include <GLFW/glfw3.h>
 #include <string>
 #include <cstdlib>
+#include <X11/Xlib.h>
+#include <X11/keysym.h>
+
+bool isRightMousePressed(Display* dpy) {
+if (!dpy) return false;
+    
+    Window root_return, child_return;
+    int root_x, root_y, win_x, win_y;
+    unsigned int mask;
+    
+    if (XQueryPointer(dpy, DefaultRootWindow(dpy), &root_return, &child_return, 
+                      &root_x, &root_y, &win_x, &win_y, &mask)) {
+        return (mask & Button1Mask) != 0; 
+    }
+    return false;
+}
 
 int main( int ac, char **dc) 
 {
+    Display* dpy = nullptr; 
+
     try
     {
         setenv("XDG_RUNTIME_DIR", "", 1);
@@ -17,13 +35,20 @@ int main( int ac, char **dc)
         char* XDG_RUNTIME_DIR = std::getenv("XDG_RUNTIME_DIR");
         char* DISPLAY = std::getenv("DISPLAY");
         std::cout << XDG_RUNTIME_DIR << " " << DISPLAY << std::endl;
+        
         Cheat hack;
         hack.GetProccesname("linux_64_client");
         hack.GetModuleBase(hack.getpid(), "linux_64_client");
         hack.GetWindowBounds(hack.getpid());
         hack.start_window();
+        dpy = XOpenDisplay(NULL);
+        if (!dpy) {
+            std::cerr << "Failed to open X display for input reading\n";
+        }
+        
         ImGuiIO& io = ImGui::GetIO();
         GLFWwindow* window = hack.get_window();
+        
         while(!glfwWindowShouldClose(window))
         {
             glfwPollEvents();
@@ -32,6 +57,7 @@ int main( int ac, char **dc)
             } else {
                 glfwSetWindowAttrib(window, GLFW_MOUSE_PASSTHROUGH, GLFW_FALSE);
             }
+            
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
@@ -44,6 +70,7 @@ int main( int ac, char **dc)
                 ImGuiWindowFlags_NoMove | 
                 ImGuiWindowFlags_NoSavedSettings | 
                 ImGuiWindowFlags_NoInputs);
+            
             try
             {
                 ImGui::GetWindowDrawList()->AddRectFilled(
@@ -54,12 +81,14 @@ int main( int ac, char **dc)
                 ImGui::SetCursorPos(ImVec2(50.0f, 200.0f));
                 ImGui::SetWindowFontScale(2.0f);
                 ImGui::TextColored(ImVec4(0.0f, 0.0f, 0.0f, 1.0f), "Cheat is ON");
+                
                 uintptr_t localPlayerPtr = ::Read<uintptr_t>(hack.getBaseAdd() + ME, hack.getpid());  
                 if (localPlayerPtr) 
                 {
                     Player me(localPlayerPtr, hack.getpid(), "ME");
                     uintptr_t entityList = ::Read<uintptr_t>(hack.getBaseAdd() + OFFSET_ENTITY_LIST, hack.getpid());
                     ViewMatrix vm = ::Read<ViewMatrix>(hack.getBaseAdd() + OFFSET_VIEW_MATRIX , hack.getpid());
+                    
                     if(ac == 2)
                     {
                         int value = std::stoi(dc[1], nullptr, 16);
@@ -70,9 +99,15 @@ int main( int ac, char **dc)
                     std::cout << "Matrix: ";
                     for(int i = 0; i < 16; i++) std::cout << vm.matrix[i] << " ";
                     std::cout << std::endl;
+                    
                     int player_count = ::Read<int>(hack.getBaseAdd() + OFFSET_PLAYER_COUNT, hack.getpid());
                     std::cout << "====================================" << std::endl;
                     std::cout << me << std::endl;
+                    
+                    bool validTarget = false;
+                    float closestDist = 999999.0f;
+                    Vector2 bestAimAngles;
+                    
                     for(int i = 1; i < player_count; i++)
                     {
                         try 
@@ -89,6 +124,13 @@ int main( int ac, char **dc)
                                 head.z += 5.0f;
                                 Vector2 screenFeet, screenHead;
                                 
+                                float dist = enemy.distance(me.get_cord());
+                                if(dist < closestDist) {
+                                    closestDist = dist;
+                                    bestAimAngles = enemy.CalcAngle(me.get_cord(), 0.0f);
+                                    validTarget = true;
+                                }
+                                
                                 if(hack.WorldToScreen(feet, screenFeet, vm.matrix) &&
                                    hack.WorldToScreen(head, screenHead, vm.matrix))
                                 {
@@ -97,6 +139,7 @@ int main( int ac, char **dc)
                                     float topLeftX = screenHead.x - (boxWidth / 2.0f);
                                     float topLeftY = screenHead.y;
                                     std::cout << "Box -> X: " << topLeftX << " | Y: " << topLeftY << " | BottomY: " << (topLeftY + boxHeight) << std::endl;
+                                    
                                     ImGui::GetWindowDrawList()->AddRect(
                                         ImVec2(topLeftX, topLeftY), 
                                         ImVec2(topLeftX + boxWidth, topLeftY + boxHeight), 
@@ -111,6 +154,11 @@ int main( int ac, char **dc)
                         catch (...) {
                             continue;
                         }
+                    }
+                    
+                    if (validTarget && isRightMousePressed(dpy)) 
+                    {
+                        ::Write<Vector2>(localPlayerPtr + OFFSET_YAW, hack.getpid(), bestAimAngles);
                     }
                 }
             }
@@ -129,6 +177,10 @@ int main( int ac, char **dc)
     catch(const std::exception& e)
     {
         std::cerr << "Fatal Error: " << e.what() << '\n';
+    }
+    
+    if (dpy) {
+        XCloseDisplay(dpy);
     }
     
     ImGui_ImplOpenGL3_Shutdown();

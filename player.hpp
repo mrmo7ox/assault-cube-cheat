@@ -5,6 +5,7 @@
 #include "vector2.hpp"
 #include <cstdint>
 #include "mem.hpp"
+#include <math.h>
 
 class Player {
     private:
@@ -40,6 +41,24 @@ class Player {
             this->cord = ::Read<Vector3>(this->address + OFFSET_X, this->pid);
             this->health = ::Read<int>(this->address + OFFSET_HEALTH, this->pid);
             this->mouse = ::Read<Vector2>(this->address + OFFSET_YAW, this->pid);
+        }
+        float distance(const Vector3& src)
+        {
+            return std::sqrt(std::pow(this->cord.x - src.x, 2) +
+                             std::pow(this->cord.y - src.y, 2) +
+                             std::pow(this->cord.z - src.z, 2));
+        };
+
+        Vector2 CalcAngle(const Vector3& src, float z_offset = 2.0f) 
+        {
+            Vector2 angles;
+            Vector3 delta = {this->cord.x - src.x,  this->cord.y - src.y, (this->cord.z + z_offset) - src.z}; 
+
+            float hyp = std::sqrt(delta.x * delta.x + delta.y * delta.y);
+            angles.x = (std::atan2(delta.y, delta.x) * 180.0f / M_PI) + 90.0f;
+            angles.y = std::atan2(delta.z, hyp) * 180.0f / M_PI;
+
+            return angles;
         }
 };
 

@@ -46,8 +46,8 @@ T Read(uintptr_t address, pid_t pid) {
     return buffer;
 }
 
-template <typename T, pid_t pid>
-void Write(uintptr_t address, T value) {
+template <typename T>
+void Write(uintptr_t address, pid_t pid, T value) {
     struct iovec local = {&value, sizeof(T)};
     struct iovec remote = {(void*)address, sizeof(T)};
     ssize_t result = process_vm_writev(pid, &local, 1, &remote, 1, 0);
